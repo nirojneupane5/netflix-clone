@@ -1,3 +1,4 @@
+import { AiOutlineGlobal } from "react-icons/ai";
 import Image from "next/image";
 import logo from "../../public/Netflix_2015_logo.svg.png";
 export default function Home() {
@@ -16,9 +17,14 @@ export default function Home() {
                   className="w-[148px]"
                 />
               </figure>
-              <div className="flex justify-end">
-                <div>
-                  <select name="" id="" className="rounded px-2 py-2 mx-4">
+              <div className="flex justify-end gap-4">
+                <div className="relative">
+                  <AiOutlineGlobal className="text-white absolute top-3 left-1" />
+                  <select
+                    name=""
+                    id=""
+                    className="rounded px-5 py-2 bg-black text-white border-[1px] border-white"
+                  >
                     <option value="">English</option>
                     <option value="">Hindi</option>
                   </select>
