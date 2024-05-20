@@ -79,10 +79,14 @@ export default function Home() {
             </div>
             <figure className="relative">
               <video
-                className="absolute w-[80%] left-[10%] bottom-[20%] z-[1]"
-                autoPlay={true}
+                className="absolute w-[70%] left-[16%] bottom-[25%] z-[3]"
+                controls
+                loop
+                playsInline
+                muted
+                autoPlay
               >
-                <source src="/video-tv-0819.m4v" />
+                <source src="/video-tv-0819.m4v" type="video/mp4" />
               </video>
               <Image src={tv} alt="TV image" className="relative z-[2]" />
             </figure>
