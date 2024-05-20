@@ -1,9 +1,12 @@
 import { AiOutlineGlobal } from "react-icons/ai";
 import Image from "next/image";
 import logo from "../../public/Netflix_2015_logo.svg.png";
+import tv from "../../public/tv.png";
+
 export default function Home() {
   return (
     <main>
+      {/* banner section */}
       <section className="bg-[url(../../public/netflixbg.jpg)] min-h-screen bg-cover bg-center">
         <div className="w-full h-screen bg-[rgba(0,0,0,0.5)]">
           <header className="max-w-[1170px] mx-auto">
@@ -53,11 +56,36 @@ export default function Home() {
                   className="border-[1px] pl-[20px] bg-transparent border-[#ccc] h-[50px]"
                   placeholder="Email Address"
                 />
-                <button className="bg-red-600 py-[15px] text-white rounded-[5px] px-[10px]">
-                  Get Started
+                <button className="bg-red-600 py-[15px] text-white rounded-[5px] px-[10px] hover:bg-red-800 duration-300">
+                  Get Started &gt;
                 </button>
               </form>
             </div>
+          </div>
+        </div>
+      </section>
+      {/* Enjoy your TV section */}
+      <section className="w-full border-t-[7px] bg-black border-t-[#4d4c4c] py-[50px] ">
+        <div className="max-w-[1170px] mx-auto px-[10px]">
+          <div className="grid sm:grid-cols-2 grid-cols-1 items-center">
+            <div className="text-white text-center">
+              <h2 className="sm:text-[50px] text-[35px] font-bold">
+                Enjoy on your TV
+              </h2>
+              <p className="sm:text-[20px] text-[15px] pt-[20px]">
+                Watch on Smart TVs, Playstation, Xbox, Chromecast, <br /> Apple
+                TV, Blu-ray players, and more.
+              </p>
+            </div>
+            <figure className="relative">
+              <video
+                className="absolute w-[80%] left-[10%] bottom-[20%] z-[1]"
+                autoPlay={true}
+              >
+                <source src="/video-tv-0819.m4v" />
+              </video>
+              <Image src={tv} alt="TV image" className="relative z-[2]" />
+            </figure>
           </div>
         </div>
       </section>
