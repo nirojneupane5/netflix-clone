@@ -35,6 +35,30 @@ export default function Home() {
               </div>
             </div>
           </header>
+          <div className="max-w-[1170px] mx-auto sm:py-[150px] py-[50px] text-center text-white">
+            <h1 className=" font-bold sm:text-[50px] text-[30px]">
+              Unlimited movies, TV shows, and more
+            </h1>
+            <h4 className="text-[20px] py-[15px]">
+              Watch anywhere. Cancel anytime.
+            </h4>
+            <p className="text-[20px]">
+              Ready to watch? Enter your email or mobile number to create or
+              restart your membership.
+            </p>
+            <div className="max-w-[700px] mx-auto mt-[30px] sm:px-[10px] px-[40px] ">
+              <form className="grid sm:grid-cols-[70%_auto] grid-cols-1 gap-4">
+                <input
+                  type="text"
+                  className="border-[1px] pl-[20px] bg-transparent border-[#ccc] h-[50px]"
+                  placeholder="Email Address"
+                />
+                <button className="bg-red-600 py-[15px] text-white rounded-[5px] px-[10px]">
+                  Get Started
+                </button>
+              </form>
+            </div>
+          </div>
         </div>
       </section>
     </main>
