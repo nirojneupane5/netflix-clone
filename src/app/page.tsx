@@ -2,6 +2,9 @@ import { AiOutlineGlobal } from "react-icons/ai";
 import Image from "next/image";
 import logo from "../../public/Netflix_2015_logo.svg.png";
 import tv from "../../public/tv.png";
+import download from "../../public/download.jpg";
+import icondownload from "../../public/download-icon.gif";
+import stranger from "../../public/stranger.png";
 
 export default function Home() {
   return (
@@ -90,6 +93,36 @@ export default function Home() {
               </video>
               <Image src={tv} alt="TV image" className="relative z-[2]" />
             </figure>
+          </div>
+        </div>
+      </section>
+      {/* download section */}
+      <section className="w-full border-t-[7px] bg-black border-t-[#4d4c4c] py-[70px] ">
+        <div className="max-w-[1170px] mx-auto px-[10px]">
+          <div className="grid sm:grid-cols-2 grid-cols-1 items-center">
+            <figure className="relative sm:order-1 order-2">
+              <Image src={download} alt="download image" />
+              <div className="sm:w-[60%] w-[80%] sm:left-[20%] left-[10%] absolute border-[1px] border-[#ccc] bottom-0 grid grid-cols-[70%_auto] bg-black items-center">
+                <div className="grid grid-cols-[25%_auto] p-[10px] gap-[10px] items-center rounded-full">
+                  <Image src={stranger} alt="stranger things" />
+                  <div className="text-white">
+                    <h1 className="font-bold text-[14px]">Stranger Things</h1>
+                    <span className="text-blue-600">Downloading...</span>
+                  </div>
+                </div>
+                <div>
+                  <Image src={icondownload} alt="download icon" />
+                </div>
+              </div>
+            </figure>
+            <div className="text-white text-center sm:order-2 order-1">
+              <h2 className="sm:text-[50px] text-[35px] font-bold sm:leading-[55px] leading-[40px]">
+                Download your shows to watch offline
+              </h2>
+              <p className="sm:text-[20px] text-[15px] pt-[20px]">
+                Save your favorites easily and always have something to watch.
+              </p>
+            </div>
           </div>
         </div>
       </section>
