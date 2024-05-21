@@ -5,6 +5,7 @@ import tv from "../../public/tv.png";
 import download from "../../public/download.jpg";
 import icondownload from "../../public/download-icon.gif";
 import stranger from "../../public/stranger.png";
+import kids from "../../public/kids.png";
 
 export default function Home() {
   return (
@@ -121,6 +122,54 @@ export default function Home() {
               </h2>
               <p className="sm:text-[20px] text-[15px] pt-[20px]">
                 Save your favorites easily and always have something to watch.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+      {/* watch everywhere */}
+      <section className="w-full border-t-[7px] bg-black border-t-[#4d4c4c] py-[50px] ">
+        <div className="max-w-[1170px] mx-auto px-[10px]">
+          <div className="grid sm:grid-cols-2 grid-cols-1 items-center">
+            <div className="text-white text-center">
+              <h2 className="sm:text-[50px] text-[35px] font-bold">
+                Watch <br /> everywhere
+              </h2>
+              <p className="sm:text-[20px] text-[15px] pt-[20px]">
+                Stream unlimited movies and TV shows on your phone, tablet,
+                laptop, and TV.
+              </p>
+            </div>
+            <figure className="relative">
+              <video
+                className="absolute w-[70%] left-[16%] bottom-[25%] z-[3]"
+                controls
+                loop
+                playsInline
+                muted
+                autoPlay
+              >
+                <source src="/video-tv-0819.m4v" type="video/mp4" />
+              </video>
+              <Image src={tv} alt="TV image" className="relative z-[2]" />
+            </figure>
+          </div>
+        </div>
+      </section>
+      {/* kids section */}
+      <section className="w-full border-t-[7px] bg-black border-t-[#4d4c4c] py-[50px]">
+        <div className="max-w-[1170px] mx-auto px-[10px]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 items-center">
+            <figure className="order-2 sm:order-1">
+              <Image src={kids} alt="kids" />
+            </figure>
+            <div className="text-center text-white order-1 sm:order-2">
+              <h1 className="text-[35px] sm:text-[50px] font-bold">
+                Create profiles for kids
+              </h1>
+              <p className="text-[20px] sm:text-[25px] text-left">
+                Send kids on adventures with their favorite characters in a
+                space made just for them—free with your membership.
               </p>
             </div>
           </div>
