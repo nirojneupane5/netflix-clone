@@ -6,6 +6,7 @@ import download from "../../public/download.jpg";
 import icondownload from "../../public/download-icon.gif";
 import stranger from "../../public/stranger.png";
 import kids from "../../public/kids.png";
+import Accordion from "./accordion";
 
 export default function Home() {
   return (
@@ -173,6 +174,15 @@ export default function Home() {
               </p>
             </div>
           </div>
+        </div>
+      </section>
+      {/* FAQ section */}
+      <section className="w-full border-t-[7px] border-t-[#4d4c4c] bg-black py-[50px]">
+        <div className="max-w-[1170px] mx-auto px-[10px]">
+          <h1 className="text-[30px] sm:text-[50px] font-bold text-white text-center">
+            Frequently Asked Questions
+          </h1>
+          <Accordion />
         </div>
       </section>
     </main>
