@@ -7,6 +7,7 @@ import icondownload from "../../public/download-icon.gif";
 import stranger from "../../public/stranger.png";
 import kids from "../../public/kids.png";
 import Accordion from "./accordion";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -183,8 +184,114 @@ export default function Home() {
             Frequently Asked Questions
           </h1>
           <Accordion />
+          <div>
+            <h1 className="text-[25px] text-white text-center">
+              Ready to watch? Enter your email or mobile number to create or
+              restart your membership.
+            </h1>
+            <div className="max-w-[700px] mx-auto mt-[30px] sm:px-[10px] px-[40px] ">
+              <form className="grid sm:grid-cols-[70%_auto] grid-cols-1 gap-4">
+                <input
+                  type="text"
+                  className="border-[1px] pl-[20px] bg-transparent border-[#ccc] h-[50px] text-white"
+                  placeholder="Email Address"
+                />
+                <button className="bg-red-600 py-[15px] text-white rounded-[5px] px-[10px] hover:bg-red-800 duration-300">
+                  Get Started &gt;
+                </button>
+              </form>
+            </div>
+          </div>
         </div>
       </section>
+      <footer className="w-full border-t-[7px] border-t-[#4d4c4c] bg-black py-[50px]">
+        <div className="max-w-[1170px] mx-auto px-[15px] text-white underline">
+          <Link href={"#"}>Questions? Contact us.</Link>
+          <div className="grid gird-cols-1 sm:grid-cols-4">
+            <div>
+              <ul>
+                <li className="mb-[10px] mt-[10px]">
+                  {" "}
+                  <Link href="#">FAQ</Link>
+                </li>
+                <li className="mb-[10px]">
+                  <Link href="#">Invester Relation</Link>
+                </li>
+                <li className="mb-[10px]">
+                  <Link href="#">Privacy</Link>
+                </li>
+                <li className="mb-[10px]">
+                  <Link href="#">Speed Test</Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <ul>
+                <li className="mb-[10px] mt-[10px]">
+                  {" "}
+                  <Link href="#">Account</Link>
+                </li>
+                <li className="mb-[10px]">
+                  <Link href="#">Ways to Watch</Link>
+                </li>
+                <li className="mb-[10px]">
+                  <Link href="#">Corporate Information</Link>
+                </li>
+                <li className="mb-[10px]">
+                  <Link href="#">Only on Netflix</Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <ul>
+                <li className="mb-[10px] mt-[10px]">
+                  {" "}
+                  <Link href="#">Help Center</Link>
+                </li>
+                <li className="mb-[10px]">
+                  <Link href="#">Jobs</Link>
+                </li>
+                <li className="mb-[10px]">
+                  <Link href="#">Cookie Preferences</Link>
+                </li>
+                <li className="mb-[10px]">
+                  <Link href="#">Legal Notices</Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <ul>
+                <li className="mb-[10px] mt-[10px]">
+                  {" "}
+                  <Link href="#">Media Center</Link>
+                </li>
+                <li className="mb-[10px]">
+                  <Link href="#">Terms of Use</Link>
+                </li>
+                <li className="mb-[10px]">
+                  <Link href="#">Contact Us</Link>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div className="relative my-[20px]">
+            <AiOutlineGlobal className="text-white absolute top-3 left-1" />
+            <select
+              name=""
+              id=""
+              className="rounded px-5 py-2 bg-black text-white border-[1px] border-white"
+            >
+              <option value="">English</option>
+              <option value="">Hindi</option>
+            </select>
+          </div>
+        </div>
+        <div className="max-w-[1170px] mx-auto px-[10px]">
+          <h1 className="no-underline text-white text-[15px] font-light">
+            Netflix Nepal
+          </h1>
+        </div>
+      </footer>
     </main>
   );
 }

@@ -23,7 +23,7 @@ const Accordion = () => {
         </button>
         <div
           className={`text-[20px] text-white bg-[#373636] p-[20px] ${
-            accrodion === 0 ? "block duration-300" : "hidden"
+            accrodion === 0 ? "block duration-300 origin-top" : "hidden"
           } `}
         >
           <p>
@@ -49,7 +49,7 @@ const Accordion = () => {
         </button>
         <div
           className={`text-[20px] text-white bg-[#373636] p-[20px] ${
-            accrodion === 1 ? "block duration-300" : "hidden"
+            accrodion === 1 ? "block duration-300 origin-top" : "hidden"
           }`}
         >
           <p>
@@ -75,7 +75,7 @@ const Accordion = () => {
         </button>
         <div
           className={`text-[20px] text-white bg-[#373636] p-[20px] ${
-            accrodion === 2 ? "block duration-300" : "hidden"
+            accrodion === 2 ? "block duration-300 origin-top" : "hidden"
           } `}
         >
           <p>
@@ -101,7 +101,7 @@ const Accordion = () => {
         </button>
         <div
           className={`text-[20px] text-white bg-[#373636] p-[20px] ${
-            accrodion === 3 ? "block duration-300" : "hidden"
+            accrodion === 3 ? "block duration-300 origin-top" : "hidden"
           } `}
         >
           <p>
