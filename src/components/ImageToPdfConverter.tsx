@@ -10,6 +10,7 @@ interface ImageToPdfConverterProps {
 export default function ImageToPdfConverter({ className = '' }: ImageToPdfConverterProps) {
   const [isConverting, setIsConverting] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+  const [folderName, setFolderName] = useState<string>('');
   const [config, setConfig] = useState<Partial<PdfConfig>>({
     orientation: 'portrait',
     pageSize: 'a4',
@@ -18,56 +19,48 @@ export default function ImageToPdfConverter({ className = '' }: ImageToPdfConver
   const [filename, setFilename] = useState('images-collection.pdf');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Netflix images from public folder
-  const netflixImages = [
-    '/Netflix_2015_logo.svg.png',
-    '/download-icon.gif',
-    '/download.jpg',
-    '/kids.png',
-    '/netflixbg.jpg',
-    '/stranger.png',
-    '/tv.png',
-    '/videotv.png'
-  ];
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFolderSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     setSelectedFiles(files);
+    
+    // Extract folder name from the first file's path
+    if (files && files.length > 0) {
+      const firstFile = files[0];
+      // Get the folder name from webkitRelativePath
+      const pathParts = (firstFile as any).webkitRelativePath?.split('/') || [firstFile.name];
+      const folder = pathParts.length > 1 ? pathParts[0] : 'Selected Folder';
+      setFolderName(folder);
+      
+      // Auto-generate filename based on folder name
+      const cleanFolderName = folder.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+      setFilename(`${cleanFolderName}-images.pdf`);
+    }
   };
 
-  const handleConvertFiles = async () => {
+  const handleConvertFolder = async () => {
     if (!selectedFiles || selectedFiles.length === 0) {
-      alert('Please select image files first');
+      alert('Please select a folder with images first');
       return;
     }
 
     setIsConverting(true);
     try {
       await convertImagesToPdf(selectedFiles, config, filename);
-      alert('PDF created and downloaded successfully!');
+      alert(`PDF created successfully from "${folderName}" folder!`);
     } catch (error) {
       console.error('Conversion failed:', error);
-      alert('Failed to convert images to PDF. Please try again.');
+      alert('Failed to convert folder images to PDF. Please try again.');
     } finally {
       setIsConverting(false);
     }
   };
 
-  const handleConvertNetflixImages = async () => {
-    setIsConverting(true);
-    try {
-      await convertPublicImagesToPdf(netflixImages, config, 'netflix-images.pdf');
-      alert('Netflix images PDF created and downloaded successfully!');
-    } catch (error) {
-      console.error('Conversion failed:', error);
-      alert('Failed to convert Netflix images to PDF. Please try again.');
-    } finally {
-      setIsConverting(false);
-    }
-  };
 
   const clearSelection = () => {
     setSelectedFiles(null);
+    setFolderName('');
+    setFilename('images-collection.pdf');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -77,10 +70,10 @@ export default function ImageToPdfConverter({ className = '' }: ImageToPdfConver
     <div className={`bg-white rounded-lg shadow-lg p-6 ${className}`}>
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-800 mb-2">
-          🖼️ Images to PDF Converter
+          📁 Folder to PDF Converter
         </h2>
         <p className="text-gray-600">
-          Convert your image folders to PDF files easily
+          Select a folder containing images and convert all images to a single PDF file
         </p>
       </div>
 
@@ -148,119 +141,111 @@ export default function ImageToPdfConverter({ className = '' }: ImageToPdfConver
         </div>
       </div>
 
-      {/* File Upload Section */}
+      {/* Folder Selection Section */}
       <div className="mb-6">
-        <h3 className="text-lg font-semibold mb-3">Upload Your Images</h3>
+        <h3 className="text-lg font-semibold mb-3">Select Image Folder</h3>
         
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+        <div className="border-2 border-dashed border-blue-300 rounded-lg p-8 text-center bg-blue-50">
           <input
             ref={fileInputRef}
             type="file"
             multiple
             accept="image/*"
-            onChange={handleFileSelect}
+            onChange={handleFolderSelect}
             className="hidden"
-            id="file-upload"
+            id="folder-upload"
+            webkitdirectory=""
+            directory=""
           />
           
           <label
-            htmlFor="file-upload"
+            htmlFor="folder-upload"
             className="cursor-pointer flex flex-col items-center"
           >
-            <svg className="w-12 h-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            <svg className="w-16 h-16 text-blue-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z" />
             </svg>
-            <span className="text-lg font-medium text-gray-600">
-              Click to select images
+            <span className="text-xl font-bold text-blue-700 mb-2">
+              📁 Click to Select Folder
             </span>
-            <span className="text-sm text-gray-500 mt-1">
+            <span className="text-sm text-blue-600 mb-2">
+              Choose a folder containing your images
+            </span>
+            <span className="text-xs text-gray-500">
               Supports JPG, PNG, GIF, BMP, WEBP, SVG
             </span>
           </label>
         </div>
 
         {selectedFiles && selectedFiles.length > 0 && (
-          <div className="mt-4 p-4 bg-green-50 rounded-lg">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-green-800 font-medium">
-                {selectedFiles.length} file(s) selected
-              </span>
+          <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex justify-between items-center mb-3">
+              <div>
+                <span className="text-green-800 font-bold text-lg">
+                  📁 {folderName}
+                </span>
+                <div className="text-green-700 text-sm">
+                  {selectedFiles.length} image(s) found
+                </div>
+              </div>
               <button
                 onClick={clearSelection}
-                className="text-red-600 hover:text-red-800 text-sm"
+                className="text-red-600 hover:text-red-800 text-sm font-medium"
               >
-                Clear
+                ✕ Clear
               </button>
             </div>
-            <div className="text-sm text-green-700">
-              {Array.from(selectedFiles).map((file, index) => (
-                <div key={index} className="truncate">
+            <div className="text-sm text-green-700 max-h-32 overflow-y-auto">
+              {Array.from(selectedFiles).slice(0, 10).map((file, index) => (
+                <div key={index} className="truncate py-1">
                   {index + 1}. {file.name}
                 </div>
               ))}
+              {selectedFiles.length > 10 && (
+                <div className="text-green-600 font-medium pt-1">
+                  ... and {selectedFiles.length - 10} more files
+                </div>
+              )}
             </div>
           </div>
         )}
 
         <button
-          onClick={handleConvertFiles}
+          onClick={handleConvertFolder}
           disabled={!selectedFiles || selectedFiles.length === 0 || isConverting}
-          className="mt-4 w-full bg-red-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          className="mt-4 w-full bg-blue-600 text-white py-4 px-6 rounded-lg font-bold text-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors shadow-lg"
         >
           {isConverting ? (
             <span className="flex items-center justify-center">
-              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <svg className="animate-spin -ml-1 mr-3 h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              Converting...
+              Converting Folder to PDF...
             </span>
           ) : (
-            'Convert Selected Images to PDF'
+            '📄 Convert Folder to PDF'
           )}
         </button>
       </div>
 
-      {/* Netflix Images Section */}
+      {/* Instructions Section */}
       <div className="border-t pt-6">
-        <h3 className="text-lg font-semibold mb-3">Quick Convert: Netflix Images</h3>
-        <p className="text-gray-600 mb-4">
-          Convert all Netflix-related images from the public folder to PDF
-        </p>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
-          {netflixImages.slice(0, 4).map((img, index) => (
-            <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-              <img
-                src={img}
-                alt={`Netflix image ${index + 1}`}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                }}
-              />
-            </div>
-          ))}
+        <h3 className="text-lg font-semibold mb-3 text-gray-700">📋 How to Use</h3>
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <ol className="list-decimal list-inside space-y-2 text-sm text-gray-600">
+            <li>Click the "📁 Click to Select Folder" button above</li>
+            <li>Choose a folder that contains your images</li>
+            <li>Adjust PDF settings if needed (orientation, page size, quality)</li>
+            <li>Click "📄 Convert Folder to PDF" to download your PDF</li>
+          </ol>
+          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
+            <p className="text-xs text-blue-700">
+              <strong>Note:</strong> The folder selection will include all images in the selected folder. 
+              Supported formats: JPG, PNG, GIF, BMP, WEBP, SVG
+            </p>
+          </div>
         </div>
-        
-        <button
-          onClick={handleConvertNetflixImages}
-          disabled={isConverting}
-          className="w-full bg-black text-white py-3 px-4 rounded-lg font-medium hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-        >
-          {isConverting ? (
-            <span className="flex items-center justify-center">
-              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Converting Netflix Images...
-            </span>
-          ) : (
-            '📄 Convert Netflix Images to PDF'
-          )}
-        </button>
       </div>
 
       {/* Supported Formats */}

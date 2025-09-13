@@ -182,7 +182,7 @@ export default function Home() {
       <section className="w-full border-t-[7px] border-t-[#4d4c4c] bg-gray-100 py-[50px]">
         <div className="max-w-[1170px] mx-auto px-[10px]">
           <h1 className="text-[30px] sm:text-[50px] font-bold text-gray-800 text-center mb-8">
-            Convert Images to PDF
+            Convert Folder to PDF
           </h1>
           <ImageToPdfConverter />
         </div>
