@@ -154,8 +154,7 @@ export default function ImageToPdfConverter({ className = '' }: ImageToPdfConver
             onChange={handleFolderSelect}
             className="hidden"
             id="folder-upload"
-            webkitdirectory=""
-            directory=""
+            {...({ webkitdirectory: "" } as any)}
           />
           
           <label
