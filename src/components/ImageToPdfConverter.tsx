@@ -234,10 +234,10 @@ export default function ImageToPdfConverter({ className = '' }: ImageToPdfConver
         <h3 className="text-lg font-semibold mb-3 text-gray-700">📋 How to Use</h3>
         <div className="bg-gray-50 p-4 rounded-lg">
           <ol className="list-decimal list-inside space-y-2 text-sm text-gray-600">
-            <li>Click the "📁 Click to Select Folder" button above</li>
+            <li>Click the &ldquo;📁 Click to Select Folder&rdquo; button above</li>
             <li>Choose a folder that contains your images</li>
             <li>Adjust PDF settings if needed (orientation, page size, quality)</li>
-            <li>Click "📄 Convert Folder to PDF" to download your PDF</li>
+            <li>Click &ldquo;📄 Convert Folder to PDF&rdquo; to download your PDF</li>
           </ol>
           <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
             <p className="text-xs text-blue-700">
