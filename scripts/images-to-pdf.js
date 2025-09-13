@@ -12,7 +12,13 @@ const { jsPDF } = require('jspdf');
 // Configuration
 const DEFAULT_FOLDER = './public';
 const DEFAULT_OUTPUT = 'images-collection.pdf';
-const SUPPORTED_FORMATS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp'];
+const SUPPORTED_FORMATS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'];
+const PDF_CONFIG = {
+    margin: 20,
+    fontSize: 10,
+    quality: 0.8, // Image quality (0.1 to 1.0)
+    orientation: 'portrait' // 'portrait' or 'landscape'
+};
 
 // Get command line arguments
 const args = process.argv.slice(2);
@@ -33,10 +39,12 @@ function getImageFiles(folderPath) {
             return SUPPORTED_FORMATS.includes(ext);
         });
         
-        return imageFiles.map(file => ({
-            name: file,
-            path: path.join(folderPath, file)
-        }));
+        return imageFiles
+            .map(file => ({
+                name: file,
+                path: path.join(folderPath, file)
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically
     } catch (error) {
         console.error(`❌ Error reading folder: ${error.message}`);
         process.exit(1);
@@ -61,6 +69,12 @@ function imageToBase64(imagePath) {
                 break;
             case '.bmp':
                 mimeType = 'image/bmp';
+                break;
+            case '.webp':
+                mimeType = 'image/webp';
+                break;
+            case '.svg':
+                mimeType = 'image/svg+xml';
                 break;
         }
         
@@ -101,17 +115,35 @@ async function createPDF(imageFiles, outputPath) {
             const pageWidth = pdf.internal.pageSize.getWidth();
             const pageHeight = pdf.internal.pageSize.getHeight();
             
-            // Add image to PDF (fit to page with aspect ratio preserved)
-            const margin = 10;
+            // Calculate proper image dimensions while preserving aspect ratio
+            const margin = PDF_CONFIG.margin;
             const maxWidth = pageWidth - (2 * margin);
-            const maxHeight = pageHeight - (2 * margin);
+            const maxHeight = pageHeight - (2 * margin) - 20; // Reserve space for filename
             
-            // Add the image (jsPDF will handle sizing automatically)
-            pdf.addImage(base64Data, 'JPEG', margin, margin, maxWidth, maxHeight);
+            // Position for centering
+            const x = margin;
+            const y = margin;
             
-            // Add image name as text at the bottom
+            // Add the image with proper format detection
+            const ext = path.extname(imageFile.path).toLowerCase();
+            const format = ext === '.png' ? 'PNG' : 
+                          ext === '.gif' ? 'GIF' : 
+                          ext === '.bmp' ? 'BMP' : 'JPEG';
+            
+            // Add image - jsPDF will automatically preserve aspect ratio and fit to bounds
+            pdf.addImage(base64Data, format, x, y, maxWidth, maxHeight);
+            
+            // Add image name as text at the bottom with better formatting
+            pdf.setFontSize(PDF_CONFIG.fontSize);
+            pdf.setTextColor(100, 100, 100); // Gray color
+            const textY = pageHeight - 10;
+            pdf.text(imageFile.name, margin, textY);
+            
+            // Add page number
             pdf.setFontSize(8);
-            pdf.text(imageFile.name, margin, pageHeight - 5);
+            const pageNum = `${i + 1} / ${imageFiles.length}`;
+            const pageNumWidth = pdf.getTextWidth(pageNum);
+            pdf.text(pageNum, pageWidth - margin - pageNumWidth, textY);
             
         } catch (error) {
             console.log(`   ⚠️  Error adding ${imageFile.name} to PDF: ${error.message}`);
