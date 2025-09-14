@@ -6,6 +6,13 @@ export interface ImageFile {
   url: string;
 }
 
+export interface ConversionProgress {
+  current: number;
+  total: number;
+  percentage: number;
+  currentFileName: string;
+}
+
 export interface PdfConfig {
   margin: number;
   fontSize: number;
@@ -35,7 +42,11 @@ export class ImageToPdfConverter {
   /**
    * Convert images to PDF and return as blob
    */
-  async convertToPdf(images: ImageFile[], filename: string = 'images.pdf'): Promise<Blob> {
+  async convertToPdf(
+    images: ImageFile[], 
+    filename: string = 'images.pdf',
+    onProgress?: (progress: ConversionProgress) => void
+  ): Promise<Blob> {
     const pdf = new jsPDF({
       orientation: this.config.orientation,
       unit: 'mm',
@@ -44,65 +55,106 @@ export class ImageToPdfConverter {
 
     let isFirstPage = true;
 
-    for (let i = 0; i < images.length; i++) {
-      const image = images[i];
+    // Process images in batches to avoid memory issues
+    const BATCH_SIZE = 50; // Process 50 images at a time
+    
+    for (let batchStart = 0; batchStart < images.length; batchStart += BATCH_SIZE) {
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, images.length);
+      const batch = images.slice(batchStart, batchEnd);
       
-      try {
-        // Add new page for each image (except the first one)
-        if (!isFirstPage) {
-          pdf.addPage();
+      for (let i = 0; i < batch.length; i++) {
+        const globalIndex = batchStart + i;
+        const image = batch[i];
+        
+        // Report progress
+        if (onProgress) {
+          onProgress({
+            current: globalIndex + 1,
+            total: images.length,
+            percentage: Math.round(((globalIndex + 1) / images.length) * 100),
+            currentFileName: image.name
+          });
         }
-        isFirstPage = false;
+        
+        try {
+          // Add new page for each image (except the first one)
+          if (!isFirstPage) {
+            pdf.addPage();
+          }
+          isFirstPage = false;
 
-        // Convert image to base64
-        const base64Data = await this.imageToBase64(image.file);
+          // Convert image to base64
+          const base64Data = await this.imageToBase64(image.file);
+          
+          // Get PDF page dimensions
+          const pageWidth = pdf.internal.pageSize.getWidth();
+          const pageHeight = pdf.internal.pageSize.getHeight();
+          
+          // Calculate image dimensions
+          const margin = this.config.margin;
+          const maxWidth = pageWidth - (2 * margin);
+          const maxHeight = pageHeight - (2 * margin) - 20; // Reserve space for filename
+          
+          // Get image dimensions
+          const imgDimensions = await this.getImageDimensions(image.url);
+          const { width: imgWidth, height: imgHeight } = imgDimensions;
+          
+          // Calculate scaling to maintain aspect ratio
+          const scaleX = maxWidth / imgWidth;
+          const scaleY = maxHeight / imgHeight;
+          const scale = Math.min(scaleX, scaleY);
+          
+          const finalWidth = imgWidth * scale;
+          const finalHeight = imgHeight * scale;
+          
+          // Center the image
+          const x = (pageWidth - finalWidth) / 2;
+          const y = margin;
+          
+          // Determine image format
+          const format = this.getImageFormat(image.file.type);
+          
+          // Add image to PDF
+          pdf.addImage(base64Data, format, x, y, finalWidth, finalHeight);
+          
+          // Add image name at the bottom
+          pdf.setFontSize(this.config.fontSize);
+          pdf.setTextColor(100, 100, 100);
+          const textY = pageHeight - 10;
+          pdf.text(image.name, margin, textY);
+          
+          // Add page number
+          pdf.setFontSize(8);
+          const pageNum = `${globalIndex + 1} / ${images.length}`;
+          const pageNumWidth = pdf.getTextWidth(pageNum);
+          pdf.text(pageNum, pageWidth - margin - pageNumWidth, textY);
+          
+        } catch (error) {
+          console.error(`Error processing image ${image.name}:`, error);
+          
+          // Report error in progress if callback exists
+          if (onProgress) {
+            onProgress({
+              current: globalIndex + 1,
+              total: images.length,
+              percentage: Math.round(((globalIndex + 1) / images.length) * 100),
+              currentFileName: `❌ Error: ${image.name}`
+            });
+          }
+          
+          // Continue with next image - don't fail entire conversion
+          continue;
+        }
         
-        // Get PDF page dimensions
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        
-        // Calculate image dimensions
-        const margin = this.config.margin;
-        const maxWidth = pageWidth - (2 * margin);
-        const maxHeight = pageHeight - (2 * margin) - 20; // Reserve space for filename
-        
-        // Get image dimensions
-        const imgDimensions = await this.getImageDimensions(image.url);
-        const { width: imgWidth, height: imgHeight } = imgDimensions;
-        
-        // Calculate scaling to maintain aspect ratio
-        const scaleX = maxWidth / imgWidth;
-        const scaleY = maxHeight / imgHeight;
-        const scale = Math.min(scaleX, scaleY);
-        
-        const finalWidth = imgWidth * scale;
-        const finalHeight = imgHeight * scale;
-        
-        // Center the image
-        const x = (pageWidth - finalWidth) / 2;
-        const y = margin;
-        
-        // Determine image format
-        const format = this.getImageFormat(image.file.type);
-        
-        // Add image to PDF
-        pdf.addImage(base64Data, format, x, y, finalWidth, finalHeight);
-        
-        // Add image name at the bottom
-        pdf.setFontSize(this.config.fontSize);
-        pdf.setTextColor(100, 100, 100);
-        const textY = pageHeight - 10;
-        pdf.text(image.name, margin, textY);
-        
-        // Add page number
-        pdf.setFontSize(8);
-        const pageNum = `${i + 1} / ${images.length}`;
-        const pageNumWidth = pdf.getTextWidth(pageNum);
-        pdf.text(pageNum, pageWidth - margin - pageNumWidth, textY);
-        
-      } catch (error) {
-        console.error(`Error processing image ${image.name}:`, error);
-        // Continue with next image
+        // Allow UI to update between images
+        if (globalIndex % 10 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      }
+      
+      // Force garbage collection between batches
+      if (batchEnd < images.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
 
@@ -113,8 +165,12 @@ export class ImageToPdfConverter {
   /**
    * Convert images to PDF and download
    */
-  async convertAndDownload(images: ImageFile[], filename: string = 'images.pdf'): Promise<void> {
-    const pdfBlob = await this.convertToPdf(images, filename);
+  async convertAndDownload(
+    images: ImageFile[], 
+    filename: string = 'images.pdf',
+    onProgress?: (progress: ConversionProgress) => void
+  ): Promise<void> {
+    const pdfBlob = await this.convertToPdf(images, filename, onProgress);
     this.downloadBlob(pdfBlob, filename);
   }
 
@@ -181,16 +237,19 @@ export class ImageToPdfConverter {
 export async function convertImagesToPdf(
   files: FileList | File[], 
   config?: Partial<PdfConfig>,
-  filename?: string
+  filename?: string,
+  onProgress?: (progress: ConversionProgress) => void
 ): Promise<void> {
   const converter = new ImageToPdfConverter(config);
   
-  // Convert FileList to ImageFile array
+  // Convert FileList to ImageFile array efficiently
   const imageFiles: ImageFile[] = [];
   const fileArray = Array.from(files);
   
+  // Filter and process image files
   for (const file of fileArray) {
     if (file.type.startsWith('image/')) {
+      // Create URL only when needed to reduce memory usage
       const url = URL.createObjectURL(file);
       imageFiles.push({
         name: file.name,
@@ -204,13 +263,43 @@ export async function convertImagesToPdf(
     throw new Error('No valid image files found');
   }
   
-  // Sort files alphabetically
+  // Sort files alphabetically for consistent ordering
   imageFiles.sort((a, b) => a.name.localeCompare(b.name));
   
-  await converter.convertAndDownload(imageFiles, filename);
-  
-  // Clean up URLs
-  imageFiles.forEach(img => URL.revokeObjectURL(img.url));
+  try {
+    // Validate large batch processing
+    if (imageFiles.length > 1000) {
+      const proceed = confirm(
+        `You're about to process ${imageFiles.length} images. This may take a very long time and use significant memory. Continue?`
+      );
+      if (!proceed) {
+        throw new Error('Conversion cancelled by user');
+      }
+    }
+    
+    await converter.convertAndDownload(imageFiles, filename, onProgress);
+  } catch (error) {
+    // Clean up URLs even on error
+    imageFiles.forEach(img => {
+      try {
+        URL.revokeObjectURL(img.url);
+      } catch (cleanupError) {
+        console.warn('Failed to revoke URL during error cleanup:', cleanupError);
+      }
+    });
+    
+    // Re-throw the original error
+    throw error;
+  } finally {
+    // Always clean up URLs to prevent memory leaks
+    imageFiles.forEach(img => {
+      try {
+        URL.revokeObjectURL(img.url);
+      } catch (error) {
+        console.warn('Failed to revoke URL:', error);
+      }
+    });
+  }
 }
 
 /**

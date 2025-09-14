@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { convertImagesToPdf, convertPublicImagesToPdf, PdfConfig } from '../utils/imagesToPdf';
+import { convertImagesToPdf, convertPublicImagesToPdf, PdfConfig, ConversionProgress } from '../utils/imagesToPdf';
 
 interface ImageToPdfConverterProps {
   className?: string;
@@ -17,6 +17,7 @@ export default function ImageToPdfConverter({ className = '' }: ImageToPdfConver
     quality: 0.8
   });
   const [filename, setFilename] = useState('images-collection.pdf');
+  const [progress, setProgress] = useState<ConversionProgress | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
 
@@ -32,9 +33,17 @@ export default function ImageToPdfConverter({ className = '' }: ImageToPdfConver
       const folder = pathParts.length > 1 ? pathParts[0] : 'Selected Folder';
       setFolderName(folder);
       
-      // Auto-generate filename based on folder name
-      const cleanFolderName = folder.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
-      setFilename(`${cleanFolderName}-images.pdf`);
+    // Auto-generate filename based on folder name
+    const cleanFolderName = folder.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+    setFilename(`${cleanFolderName}-images.pdf`);
+    
+    // Auto-adjust quality for large batches to reduce memory usage
+    if (files.length > 500) {
+      setConfig(prev => ({
+        ...prev,
+        quality: Math.min(prev.quality || 0.8, 0.6) // Reduce quality for large batches
+      }));
+    }
     }
   };
 
@@ -45,14 +54,36 @@ export default function ImageToPdfConverter({ className = '' }: ImageToPdfConver
     }
 
     setIsConverting(true);
+    setProgress(null);
+    
     try {
-      await convertImagesToPdf(selectedFiles, config, filename);
-      alert(`PDF created successfully from "${folderName}" folder!`);
+      await convertImagesToPdf(
+        selectedFiles, 
+        config, 
+        filename,
+        (progressData: ConversionProgress) => {
+          setProgress(progressData);
+        }
+      );
+      
+      const successMessage = selectedFiles.length > 500 
+        ? `🎉 PDF created successfully! Processed ${selectedFiles.length} images from "${folderName}" folder. Large batch completed!`
+        : `PDF created successfully from "${folderName}" folder with ${selectedFiles.length} images!`;
+      
+      alert(successMessage);
     } catch (error) {
       console.error('Conversion failed:', error);
-      alert('Failed to convert folder images to PDF. Please try again.');
+      
+      const errorMessage = error instanceof Error && error.message.includes('cancelled')
+        ? 'Conversion was cancelled by user.'
+        : selectedFiles.length > 500
+        ? 'Failed to convert large image batch to PDF. This may be due to memory limitations. Try reducing the number of images or image quality.'
+        : 'Failed to convert folder images to PDF. Please try again.';
+      
+      alert(errorMessage);
     } finally {
       setIsConverting(false);
+      setProgress(null);
     }
   };
 
@@ -61,6 +92,7 @@ export default function ImageToPdfConverter({ className = '' }: ImageToPdfConver
     setSelectedFiles(null);
     setFolderName('');
     setFilename('images-collection.pdf');
+    setProgress(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -185,11 +217,17 @@ export default function ImageToPdfConverter({ className = '' }: ImageToPdfConver
                 </span>
                 <div className="text-green-700 text-sm">
                   {selectedFiles.length} image(s) found
+                  {selectedFiles.length > 500 && (
+                    <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                      Large batch - may take several minutes
+                    </span>
+                  )}
                 </div>
               </div>
               <button
                 onClick={clearSelection}
-                className="text-red-600 hover:text-red-800 text-sm font-medium"
+                disabled={isConverting}
+                className="text-red-600 hover:text-red-800 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 ✕ Clear
               </button>
@@ -209,6 +247,34 @@ export default function ImageToPdfConverter({ className = '' }: ImageToPdfConver
           </div>
         )}
 
+        {/* Progress Bar */}
+        {isConverting && progress && (
+          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-blue-800 font-medium">
+                Processing Images...
+              </span>
+              <span className="text-blue-600 text-sm">
+                {progress.current} / {progress.total} ({progress.percentage}%)
+              </span>
+            </div>
+            <div className="w-full bg-blue-200 rounded-full h-3 mb-2">
+              <div 
+                className="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${progress.percentage}%` }}
+              ></div>
+            </div>
+            <div className="text-blue-700 text-sm truncate">
+              Current: {progress.currentFileName}
+            </div>
+            {progress.total > 100 && (
+              <div className="text-blue-600 text-xs mt-1">
+                Large batch processing - please be patient
+              </div>
+            )}
+          </div>
+        )}
+
         <button
           onClick={handleConvertFolder}
           disabled={!selectedFiles || selectedFiles.length === 0 || isConverting}
@@ -220,7 +286,7 @@ export default function ImageToPdfConverter({ className = '' }: ImageToPdfConver
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              Converting Folder to PDF...
+              {progress ? `Converting... ${progress.percentage}%` : 'Converting Folder to PDF...'}
             </span>
           ) : (
             '📄 Convert Folder to PDF'
@@ -242,6 +308,12 @@ export default function ImageToPdfConverter({ className = '' }: ImageToPdfConver
             <p className="text-xs text-blue-700">
               <strong>Note:</strong> The folder selection will include all images in the selected folder. 
               Supported formats: JPG, PNG, GIF, BMP, WEBP, SVG
+            </p>
+          </div>
+          <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded">
+            <p className="text-xs text-yellow-700">
+              <strong>Large Folders:</strong> Processing 500+ images may take several minutes. 
+              The progress bar will show current status. Please keep the browser tab active during conversion.
             </p>
           </div>
         </div>
