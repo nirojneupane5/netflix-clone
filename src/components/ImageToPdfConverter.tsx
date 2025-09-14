@@ -81,6 +81,8 @@ export default function ImageToPdfConverter({ className = '' }: ImageToPdfConver
       
       const errorMessage = error instanceof Error && error.message.includes('cancelled')
         ? 'Conversion was cancelled by user.'
+        : error instanceof Error && error.message.includes('string length')
+        ? 'Failed due to image size limitations. Some images may be too large. Try reducing image quality or using smaller images.'
         : selectedFiles.length > 500
         ? 'Failed to convert large image batch to PDF. This may be due to memory limitations. Try reducing the number of images or image quality.'
         : 'Failed to convert folder images to PDF. Please try again.';
@@ -324,6 +326,12 @@ export default function ImageToPdfConverter({ className = '' }: ImageToPdfConver
             <p className="text-xs text-yellow-700">
               <strong>Large Folders:</strong> Processing 500+ images may take several minutes. 
               The progress bar will show current status. Please keep the browser tab active during conversion.
+            </p>
+          </div>
+          <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded">
+            <p className="text-xs text-red-700">
+              <strong>File Limits:</strong> Images larger than 50MB will be skipped automatically. 
+              Large images are compressed to prevent memory issues. Quality is auto-reduced for large batches.
             </p>
           </div>
         </div>

@@ -275,6 +275,12 @@ export async function convertImagesToPdf(
   
   for (const file of fileArray) {
     if (file.type.startsWith('image/')) {
+      // Skip extremely large files that could cause string length issues
+      const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB limit per image
+      if (file.size > MAX_FILE_SIZE) {
+        console.warn(`Skipping large file: ${file.name} (${Math.round(file.size / 1024 / 1024)}MB)`);
+        continue;
+      }
       imageFilesList.push(file);
     }
   }
@@ -346,8 +352,8 @@ async function convertImagesToPdfOptimized(
         }
         isFirstPage = false;
         
-        // Convert image to base64
-        const base64Data = await imageToBase64Optimized(file);
+        // Convert image to base64 with compression
+        const base64Data = await imageToBase64Optimized(file, pdfConfig.quality);
         
         // Get PDF page dimensions
         const pageWidth = pdf.internal.pageSize.getWidth();
@@ -431,15 +437,75 @@ async function convertImagesToPdfOptimized(
   }
 }
 
-// Optimized helper functions
-function imageToBase64Optimized(file: File): Promise<string> {
+// Optimized helper functions with compression
+function imageToBase64Optimized(file: File, quality: number = 0.8): Promise<string> {
   return new Promise((resolve, reject) => {
+    // Create image element to load the file
+    const img = new Image();
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) {
+      reject(new Error('Canvas context not available'));
+      return;
+    }
+    
+    img.onload = () => {
+      try {
+        // Calculate maximum dimensions to prevent string length issues
+        // Reduce dimensions further for lower quality settings (large batches)
+        const MAX_DIMENSION = quality < 0.5 ? 1536 : 2048;
+        let { width, height } = img;
+        
+        // Scale down if image is too large
+        if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+          const ratio = Math.min(MAX_DIMENSION / width, MAX_DIMENSION / height);
+          width = Math.floor(width * ratio);
+          height = Math.floor(height * ratio);
+        }
+        
+        // Set canvas size
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Draw and compress image
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Convert to base64 with compression
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+        
+        // Clean up
+        img.onload = null;
+        img.onerror = null;
+        img.src = '';
+        canvas.width = 0;
+        canvas.height = 0;
+        
+        resolve(compressedDataUrl);
+      } catch (error) {
+        // Clean up on error
+        img.onload = null;
+        img.onerror = null;
+        img.src = '';
+        canvas.width = 0;
+        canvas.height = 0;
+        reject(new Error(`Failed to compress image: ${file.name} - ${error}`));
+      }
+    };
+    
+    img.onerror = () => {
+      img.onload = null;
+      img.onerror = null;
+      img.src = '';
+      reject(new Error(`Failed to load image: ${file.name}`));
+    };
+    
+    // Load image from file
     const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
+    reader.onload = (e) => {
+      img.src = e.target?.result as string;
       reader.onload = null;
       reader.onerror = null;
-      resolve(result);
     };
     reader.onerror = () => {
       reader.onload = null;
