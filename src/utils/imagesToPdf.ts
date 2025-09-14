@@ -307,7 +307,7 @@ export async function convertImagesToPdf(
 }
 
 /**
- * Memory-optimized PDF conversion that processes images one by one
+ * Memory-optimized PDF conversion that processes images one by one with splitting
  */
 async function convertImagesToPdfOptimized(
   imageFilesList: File[],
@@ -317,7 +317,71 @@ async function convertImagesToPdfOptimized(
 ): Promise<void> {
   const pdfConfig = { ...DEFAULT_PDF_CONFIG, ...config };
   
-  // Create PDF document once
+  // Determine if we need to split the PDF
+  const IMAGES_PER_PDF = imageFilesList.length > 200 ? 100 : 200; // Smaller chunks for large batches
+  const needsSplitting = imageFilesList.length > IMAGES_PER_PDF;
+  
+  if (needsSplitting) {
+    await createSplitPDFs(imageFilesList, pdfConfig, filename, onProgress, IMAGES_PER_PDF);
+  } else {
+    await createSinglePDF(imageFilesList, pdfConfig, filename, onProgress);
+  }
+}
+
+/**
+ * Create multiple smaller PDFs
+ */
+async function createSplitPDFs(
+  imageFilesList: File[],
+  pdfConfig: PdfConfig,
+  baseFilename: string,
+  onProgress?: (progress: ConversionProgress) => void,
+  imagesPerPdf: number = 100
+): Promise<void> {
+  const totalImages = imageFilesList.length;
+  const totalPdfs = Math.ceil(totalImages / imagesPerPdf);
+  
+  // Remove .pdf extension from base filename
+  const baseName = baseFilename.replace(/\.pdf$/i, '');
+  
+  for (let pdfIndex = 0; pdfIndex < totalPdfs; pdfIndex++) {
+    const startIndex = pdfIndex * imagesPerPdf;
+    const endIndex = Math.min(startIndex + imagesPerPdf, totalImages);
+    const currentBatch = imageFilesList.slice(startIndex, endIndex);
+    
+    // Create filename for this part
+    const partFilename = `${baseName}_part${pdfIndex + 1}_of_${totalPdfs}.pdf`;
+    
+    await createSinglePDF(currentBatch, pdfConfig, partFilename, (progress) => {
+      if (onProgress) {
+        // Adjust progress to reflect overall progress across all PDFs
+        const overallProgress = {
+          current: startIndex + progress.current,
+          total: totalImages,
+          percentage: Math.round(((startIndex + progress.current) / totalImages) * 100),
+          currentFileName: `Part ${pdfIndex + 1}/${totalPdfs} - ${progress.currentFileName}`
+        };
+        onProgress(overallProgress);
+      }
+    });
+    
+    // Pause between PDFs to allow memory cleanup
+    if (pdfIndex < totalPdfs - 1) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+}
+
+/**
+ * Create a single PDF from a batch of images
+ */
+async function createSinglePDF(
+  imageFilesList: File[],
+  pdfConfig: PdfConfig,
+  filename: string,
+  onProgress?: (progress: ConversionProgress) => void
+): Promise<void> {
+  // Create PDF document
   const pdf = new jsPDF({
     orientation: pdfConfig.orientation,
     unit: 'mm',

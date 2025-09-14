@@ -71,8 +71,10 @@ export default function ImageToPdfConverter({ className = '' }: ImageToPdfConver
         }
       );
       
-      const successMessage = selectedFiles.length > 500 
-        ? `🎉 PDF created successfully! Processed ${selectedFiles.length} images from "${folderName}" folder. Large batch completed!`
+      const successMessage = selectedFiles.length > 200
+        ? selectedFiles.length > 500
+          ? `🎉 PDFs created successfully! Processed ${selectedFiles.length} images from "${folderName}" folder. Large batch split into multiple PDF files for easier opening!`
+          : `🎉 PDFs created successfully! Processed ${selectedFiles.length} images from "${folderName}" folder. Split into multiple PDF files!`
         : `PDF created successfully from "${folderName}" folder with ${selectedFiles.length} images!`;
       
       alert(successMessage);
@@ -226,12 +228,12 @@ export default function ImageToPdfConverter({ className = '' }: ImageToPdfConver
                   {selectedFiles.length} image(s) found
                   {selectedFiles.length > 500 && (
                     <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
-                      Large batch - quality auto-reduced to prevent crashes
+                      Large batch - will be split into multiple PDFs
                     </span>
                   )}
                   {selectedFiles.length > 200 && selectedFiles.length <= 500 && (
                     <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                      Medium batch - quality auto-adjusted
+                      Medium batch - will be split into multiple PDFs
                     </span>
                   )}
                 </div>
@@ -326,6 +328,11 @@ export default function ImageToPdfConverter({ className = '' }: ImageToPdfConver
             <p className="text-xs text-yellow-700">
               <strong>Large Folders:</strong> Processing 500+ images may take several minutes. 
               The progress bar will show current status. Please keep the browser tab active during conversion.
+            </p>
+          </div>
+          <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded">
+            <p className="text-xs text-green-700">
+              <strong>PDF Splitting:</strong> Folders with 200+ images are automatically split into multiple smaller PDF files (100 images each) to ensure they can be opened easily. Each PDF will be downloaded separately.
             </p>
           </div>
           <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded">
