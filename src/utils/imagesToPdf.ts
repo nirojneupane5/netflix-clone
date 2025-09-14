@@ -55,8 +55,8 @@ export class ImageToPdfConverter {
 
     let isFirstPage = true;
 
-    // Process images in batches to avoid memory issues
-    const BATCH_SIZE = 50; // Process 50 images at a time
+    // Process images in smaller batches to avoid memory issues
+    const BATCH_SIZE = images.length > 500 ? 10 : 25; // Smaller batches for large sets
     
     for (let batchStart = 0; batchStart < images.length; batchStart += BATCH_SIZE) {
       const batchEnd = Math.min(batchStart + BATCH_SIZE, images.length);
@@ -146,15 +146,22 @@ export class ImageToPdfConverter {
           continue;
         }
         
-        // Allow UI to update between images
-        if (globalIndex % 10 === 0) {
-          await new Promise(resolve => setTimeout(resolve, 0));
+        // Allow UI to update and garbage collection between images
+        if (globalIndex % 5 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 10));
         }
       }
       
-      // Force garbage collection between batches
+      // Force garbage collection and longer pause between batches
       if (batchEnd < images.length) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Longer pause for large batches to allow memory cleanup
+        const pauseTime = images.length > 500 ? 500 : 100;
+        await new Promise(resolve => setTimeout(resolve, pauseTime));
+        
+        // Force garbage collection if available
+        if (typeof window !== 'undefined' && 'gc' in window) {
+          (window as any).gc();
+        }
       }
     }
 
@@ -175,25 +182,47 @@ export class ImageToPdfConverter {
   }
 
   /**
-   * Convert File to base64
+   * Convert File to base64 with memory optimization
    */
   private imageToBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Clean up reader immediately
+        reader.onload = null;
+        reader.onerror = null;
+        resolve(result);
+      };
+      reader.onerror = () => {
+        reader.onload = null;
+        reader.onerror = null;
+        reject(new Error(`Failed to read file: ${file.name}`));
+      };
       reader.readAsDataURL(file);
     });
   }
 
   /**
-   * Get image dimensions
+   * Get image dimensions with memory cleanup
    */
   private getImageDimensions(url: string): Promise<{ width: number; height: number }> {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.onload = () => resolve({ width: img.width, height: img.height });
-      img.onerror = reject;
+      img.onload = () => {
+        const dimensions = { width: img.width, height: img.height };
+        // Clean up image immediately
+        img.onload = null;
+        img.onerror = null;
+        img.src = '';
+        resolve(dimensions);
+      };
+      img.onerror = () => {
+        img.onload = null;
+        img.onerror = null;
+        img.src = '';
+        reject(new Error('Failed to load image dimensions'));
+      };
       img.src = url;
     });
   }
@@ -232,7 +261,7 @@ export class ImageToPdfConverter {
 }
 
 /**
- * Utility function to convert folder/files to PDF
+ * Memory-optimized utility function to convert folder/files to PDF
  */
 export async function convertImagesToPdf(
   files: FileList | File[], 
@@ -240,66 +269,231 @@ export async function convertImagesToPdf(
   filename?: string,
   onProgress?: (progress: ConversionProgress) => void
 ): Promise<void> {
-  const converter = new ImageToPdfConverter(config);
-  
-  // Convert FileList to ImageFile array efficiently
-  const imageFiles: ImageFile[] = [];
+  // Filter image files without creating URLs yet
+  const imageFilesList: File[] = [];
   const fileArray = Array.from(files);
   
-  // Filter and process image files
   for (const file of fileArray) {
     if (file.type.startsWith('image/')) {
-      // Create URL only when needed to reduce memory usage
-      const url = URL.createObjectURL(file);
-      imageFiles.push({
-        name: file.name,
-        file: file,
-        url: url
-      });
+      imageFilesList.push(file);
     }
   }
   
-  if (imageFiles.length === 0) {
+  if (imageFilesList.length === 0) {
     throw new Error('No valid image files found');
   }
   
   // Sort files alphabetically for consistent ordering
-  imageFiles.sort((a, b) => a.name.localeCompare(b.name));
+  imageFilesList.sort((a, b) => a.name.localeCompare(b.name));
+  
+  // Validate large batch processing
+  if (imageFilesList.length > 1000) {
+    const proceed = confirm(
+      `You're about to process ${imageFilesList.length} images. This may take a very long time and use significant memory. Continue?`
+    );
+    if (!proceed) {
+      throw new Error('Conversion cancelled by user');
+    }
+  }
+  
+  // Use memory-optimized single PDF approach
+  await convertImagesToPdfOptimized(imageFilesList, config, filename, onProgress);
+}
+
+/**
+ * Memory-optimized PDF conversion that processes images one by one
+ */
+async function convertImagesToPdfOptimized(
+  imageFilesList: File[],
+  config?: Partial<PdfConfig>,
+  filename: string = 'images.pdf',
+  onProgress?: (progress: ConversionProgress) => void
+): Promise<void> {
+  const pdfConfig = { ...DEFAULT_PDF_CONFIG, ...config };
+  
+  // Create PDF document once
+  const pdf = new jsPDF({
+    orientation: pdfConfig.orientation,
+    unit: 'mm',
+    format: pdfConfig.pageSize
+  });
+  
+  let isFirstPage = true;
   
   try {
-    // Validate large batch processing
-    if (imageFiles.length > 1000) {
-      const proceed = confirm(
-        `You're about to process ${imageFiles.length} images. This may take a very long time and use significant memory. Continue?`
-      );
-      if (!proceed) {
-        throw new Error('Conversion cancelled by user');
+    for (let i = 0; i < imageFilesList.length; i++) {
+      const file = imageFilesList[i];
+      
+      // Report progress
+      if (onProgress) {
+        onProgress({
+          current: i + 1,
+          total: imageFilesList.length,
+          percentage: Math.round(((i + 1) / imageFilesList.length) * 100),
+          currentFileName: file.name
+        });
+      }
+      
+      let url: string | null = null;
+      
+      try {
+        // Create URL only for current image
+        url = URL.createObjectURL(file);
+        
+        // Add new page for each image (except the first one)
+        if (!isFirstPage) {
+          pdf.addPage();
+        }
+        isFirstPage = false;
+        
+        // Convert image to base64
+        const base64Data = await imageToBase64Optimized(file);
+        
+        // Get PDF page dimensions
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        
+        // Calculate image dimensions
+        const margin = pdfConfig.margin;
+        const maxWidth = pageWidth - (2 * margin);
+        const maxHeight = pageHeight - (2 * margin) - 20; // Reserve space for filename
+        
+        // Get image dimensions
+        const imgDimensions = await getImageDimensionsOptimized(url);
+        const { width: imgWidth, height: imgHeight } = imgDimensions;
+        
+        // Calculate scaling to maintain aspect ratio
+        const scaleX = maxWidth / imgWidth;
+        const scaleY = maxHeight / imgHeight;
+        const scale = Math.min(scaleX, scaleY);
+        
+        const finalWidth = imgWidth * scale;
+        const finalHeight = imgHeight * scale;
+        
+        // Center the image
+        const x = (pageWidth - finalWidth) / 2;
+        const y = margin;
+        
+        // Determine image format
+        const format = getImageFormatOptimized(file.type);
+        
+        // Add image to PDF
+        pdf.addImage(base64Data, format, x, y, finalWidth, finalHeight);
+        
+        // Add image name at the bottom
+        pdf.setFontSize(pdfConfig.fontSize);
+        pdf.setTextColor(100, 100, 100);
+        const textY = pageHeight - 10;
+        pdf.text(file.name, margin, textY);
+        
+        // Add page number
+        pdf.setFontSize(8);
+        const pageNum = `${i + 1} / ${imageFilesList.length}`;
+        const pageNumWidth = pdf.getTextWidth(pageNum);
+        pdf.text(pageNum, pageWidth - margin - pageNumWidth, textY);
+        
+      } catch (error) {
+        console.error(`Error processing image ${file.name}:`, error);
+        
+        // Report error in progress
+        if (onProgress) {
+          onProgress({
+            current: i + 1,
+            total: imageFilesList.length,
+            percentage: Math.round(((i + 1) / imageFilesList.length) * 100),
+            currentFileName: `❌ Error: ${file.name}`
+          });
+        }
+      } finally {
+        // Clean up URL immediately
+        if (url) {
+          try {
+            URL.revokeObjectURL(url);
+          } catch (error) {
+            console.warn('Failed to revoke URL:', error);
+          }
+        }
+      }
+      
+      // Allow UI to update and garbage collection
+      if (i % 5 === 0) {
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
     }
     
-    await converter.convertAndDownload(imageFiles, filename, onProgress);
-  } catch (error) {
-    // Clean up URLs even on error
-    imageFiles.forEach(img => {
-      try {
-        URL.revokeObjectURL(img.url);
-      } catch (cleanupError) {
-        console.warn('Failed to revoke URL during error cleanup:', cleanupError);
-      }
-    });
+    // Download the final PDF
+    const pdfBlob = new Blob([pdf.output('blob')], { type: 'application/pdf' });
+    downloadBlobOptimized(pdfBlob, filename);
     
-    // Re-throw the original error
+  } catch (error) {
+    console.error('PDF conversion failed:', error);
     throw error;
-  } finally {
-    // Always clean up URLs to prevent memory leaks
-    imageFiles.forEach(img => {
-      try {
-        URL.revokeObjectURL(img.url);
-      } catch (error) {
-        console.warn('Failed to revoke URL:', error);
-      }
-    });
   }
+}
+
+// Optimized helper functions
+function imageToBase64Optimized(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      reader.onload = null;
+      reader.onerror = null;
+      resolve(result);
+    };
+    reader.onerror = () => {
+      reader.onload = null;
+      reader.onerror = null;
+      reject(new Error(`Failed to read file: ${file.name}`));
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function getImageDimensionsOptimized(url: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const dimensions = { width: img.width, height: img.height };
+      img.onload = null;
+      img.onerror = null;
+      img.src = '';
+      resolve(dimensions);
+    };
+    img.onerror = () => {
+      img.onload = null;
+      img.onerror = null;
+      img.src = '';
+      reject(new Error('Failed to load image dimensions'));
+    };
+    img.src = url;
+  });
+}
+
+function getImageFormatOptimized(mimeType: string): string {
+  switch (mimeType) {
+    case 'image/png':
+      return 'PNG';
+    case 'image/gif':
+      return 'GIF';
+    case 'image/bmp':
+      return 'BMP';
+    case 'image/webp':
+      return 'WEBP';
+    default:
+      return 'JPEG';
+  }
+}
+
+function downloadBlobOptimized(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 /**

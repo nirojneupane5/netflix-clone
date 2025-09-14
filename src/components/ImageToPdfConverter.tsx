@@ -41,7 +41,12 @@ export default function ImageToPdfConverter({ className = '' }: ImageToPdfConver
     if (files.length > 500) {
       setConfig(prev => ({
         ...prev,
-        quality: Math.min(prev.quality || 0.8, 0.6) // Reduce quality for large batches
+        quality: Math.min(prev.quality || 0.8, 0.4) // Significantly reduce quality for large batches
+      }));
+    } else if (files.length > 200) {
+      setConfig(prev => ({
+        ...prev,
+        quality: Math.min(prev.quality || 0.8, 0.6) // Moderately reduce quality for medium batches
       }));
     }
     }
@@ -219,7 +224,12 @@ export default function ImageToPdfConverter({ className = '' }: ImageToPdfConver
                   {selectedFiles.length} image(s) found
                   {selectedFiles.length > 500 && (
                     <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
-                      Large batch - may take several minutes
+                      Large batch - quality auto-reduced to prevent crashes
+                    </span>
+                  )}
+                  {selectedFiles.length > 200 && selectedFiles.length <= 500 && (
+                    <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                      Medium batch - quality auto-adjusted
                     </span>
                   )}
                 </div>
